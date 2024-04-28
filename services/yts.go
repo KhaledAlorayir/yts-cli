@@ -10,15 +10,18 @@ import (
 )
 
 const (
-	base_url = "https://yts.mx/browse-movies/%s/all/all/0/latest/0/all"
+	base_url  = "https://yts.mx/browse-movies/%s/all/all/0/latest/0/all"
+	max_pages = 5
 )
 
 func GetMovies(query string) ([]Option, error) {
-	c := colly.NewCollector()
 	url := fmt.Sprintf(base_url, query)
+
+	c := colly.NewCollector()
 
 	var movies []Option
 	var err error
+	page := 1
 
 	c.OnError(func(_ *colly.Response, CollectorErr error) {
 		log.Println("Something went wrong: ", CollectorErr)
@@ -30,10 +33,18 @@ func GetMovies(query string) ([]Option, error) {
 		year := e.ChildText(".browse-movie-year")
 		url := e.ChildAttr(".browse-movie-title", "href")
 
-		movies = append(movies, Option{label: fmt.Sprintf("%s - %s", title, year), url: url})
+		movies = append(movies, Option{Label: fmt.Sprintf("%s - %s", title, year), Url: url})
+		fmt.Println(title)
 	})
 
-	c.Visit(url)
+	c.OnHTML("section + .hidden-sm .tsc_pagination li a", func(e *colly.HTMLElement) {
+		if strings.HasPrefix(e.Text, "Next") && page < max_pages {
+			page++
+			e.Request.Visit(e.Attr("href"))
+		}
+	})
+
+	err = c.Visit(url)
 
 	if err != nil {
 		return movies, err
@@ -42,7 +53,7 @@ func GetMovies(query string) ([]Option, error) {
 	return movies, nil
 }
 
-func GetMovieOptions(link string) ([]Option, error) {
+func GetMovieVersionOptions(link string) ([]Option, error) {
 	c := colly.NewCollector()
 
 	var links []Option
@@ -56,10 +67,11 @@ func GetMovieOptions(link string) ([]Option, error) {
 	c.OnHTML("#movie-info .hidden-sm a", func(e *colly.HTMLElement) {
 		url := e.Attr("href")
 		if strings.HasPrefix(url, "https://yts.mx/torrent") {
-			links = append(links, Option{label: e.Text, url: url})
+			links = append(links, Option{Label: e.Text, Url: url})
 		}
 	})
-	c.Visit(link)
+
+	err = c.Visit(link)
 
 	if err != nil {
 		return links, err

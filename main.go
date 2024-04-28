@@ -7,6 +7,6 @@ import (
 )
 
 func main() {
-	fmt.Println(services.GetMovieOptions("https://yts.mx/movies/raiders-of-the-lost-ark-1981"))
-	// fmt.Println(services.GetMovies("raiders of the lost ark"))
+	thing, _ := services.GetMovies("007")
+	fmt.Println(len(thing))
 }
