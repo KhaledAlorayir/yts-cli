@@ -15,6 +15,10 @@ type searchVersionsMsg struct {
 	versions []yts.Option
 }
 
+type goToStepMsg struct {
+	step step
+}
+
 type errMsg struct{ err error }
 
 func (e errMsg) Error() string { return e.err.Error() }
@@ -31,7 +35,7 @@ func searchMovies(query string) tea.Cmd {
 			return errMsg{err: errors.New("no movies found ;(")}
 		}
 
-		return searchMoviesMsg{movies: movies}
+		return searchMoviesMsg{movies: append(movies, yts.Option{Label: "previous"})}
 	}
 }
 
@@ -43,6 +47,12 @@ func searchVersions(link string) tea.Cmd {
 			return errMsg{err: err}
 		}
 
-		return searchVersionsMsg{versions: versions}
+		return searchVersionsMsg{versions: append(versions, yts.Option{Label: "previous"})}
+	}
+}
+
+func goToStep(step step) tea.Cmd {
+	return func() tea.Msg {
+		return goToStepMsg{step: step}
 	}
 }

@@ -44,12 +44,13 @@ func (model model) View() string {
 		return fmt.Sprintf("\nWe had some trouble: %v\n\n", model.err)
 	}
 
+	ui := ""
+
 	if model.step == SEARCH_INPUT {
-		return fmt.Sprintf(
-			"Please enter the movie name\n\n%s\n\n%s\n",
+		ui += fmt.Sprintf(
+			"Please enter the movie name\n\n%s",
 			model.textInput.View(),
-			"(esc to quit)",
-		) + "\n"
+		)
 	}
 
 	if model.step == MOVIE_LIST || model.step == VERSION_LIST {
@@ -63,16 +64,24 @@ func (model model) View() string {
 		}
 
 		for i, o := range options {
+			var label string
+
 			if i == model.selectedIndex {
-				labels = append(labels, fmt.Sprintf("-> %s", o.Label))
+				label = fmt.Sprintf("-> %s", o.Label)
 			} else {
-				labels = append(labels, fmt.Sprintf("   %s", o.Label))
+				label = fmt.Sprintf("   %s", o.Label)
 			}
+
+			if i == len(options)-1 {
+				label = "\n" + label
+			}
+
+			labels = append(labels, label)
 		}
 
-		return fmt.Sprintf("   Pick a movie!\n\n%s", strings.Join(labels, "\n"))
+		ui += fmt.Sprintf("   Pick an option!\n\n%s", strings.Join(labels, "\n"))
 	}
-	return ""
+	return ui + fmt.Sprintf("\n\n%s\n\n", "(esc to quit)")
 }
 
 func (model model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -96,6 +105,11 @@ func (model model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		model.step = VERSION_LIST
 		model.selectedIndex = 0
 		model.movieVersions = msg.versions
+		return model, nil
+
+	case goToStepMsg:
+		model.step = msg.step
+		model.selectedIndex = 0
 		return model, nil
 
 	case errMsg:
@@ -132,7 +146,15 @@ func (model model) handleStep() tea.Cmd {
 	case SEARCH_INPUT:
 		return searchMovies(model.textInput.Value())
 	case MOVIE_LIST:
+		if model.selectedIndex == len(model.movies)-1 {
+			return goToStep(SEARCH_INPUT)
+		}
 		return searchVersions(model.movies[model.selectedIndex].Url)
+	case VERSION_LIST:
+		if model.selectedIndex == len(model.movieVersions)-1 {
+			return goToStep(MOVIE_LIST)
+		}
+		return nil
 	default:
 		return nil
 	}
