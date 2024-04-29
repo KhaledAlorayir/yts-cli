@@ -1,4 +1,4 @@
-package services
+package yts
 
 type Option struct {
 	Label string

@@ -1,9 +1,8 @@
-package services
+package yts
 
 import (
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/gocolly/colly"
@@ -11,7 +10,7 @@ import (
 
 const (
 	base_url  = "https://yts.mx/browse-movies/%s/all/all/0/latest/0/all"
-	max_pages = 5
+	max_pages = 1
 )
 
 func GetMovies(query string) ([]Option, error) {
@@ -24,7 +23,6 @@ func GetMovies(query string) ([]Option, error) {
 	page := 1
 
 	c.OnError(func(_ *colly.Response, CollectorErr error) {
-		log.Println("Something went wrong: ", CollectorErr)
 		err = errors.New("something went wrong")
 	})
 
@@ -34,7 +32,6 @@ func GetMovies(query string) ([]Option, error) {
 		url := e.ChildAttr(".browse-movie-title", "href")
 
 		movies = append(movies, Option{Label: fmt.Sprintf("%s - %s", title, year), Url: url})
-		fmt.Println(title)
 	})
 
 	c.OnHTML("section + .hidden-sm .tsc_pagination li a", func(e *colly.HTMLElement) {
@@ -60,7 +57,6 @@ func GetMovieVersionOptions(link string) ([]Option, error) {
 	var err error
 
 	c.OnError(func(_ *colly.Response, CollectorErr error) {
-		log.Println("something went wrong: ", err)
 		err = errors.New("something went wrong")
 	})
 
