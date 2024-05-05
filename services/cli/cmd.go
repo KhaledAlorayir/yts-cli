@@ -2,17 +2,20 @@ package cli
 
 import (
 	"errors"
+	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/khaledAlorayir/yts-cli/yts"
+	"github.com/khaledAlorayir/yts-cli/common"
+	"github.com/khaledAlorayir/yts-cli/services/downloader"
+	"github.com/khaledAlorayir/yts-cli/services/yts"
 )
 
 type searchMoviesMsg struct {
-	movies []yts.Option
+	movies []common.Option
 }
 
 type searchVersionsMsg struct {
-	versions []yts.Option
+	versions []common.Option
 }
 
 type goToStepMsg struct {
@@ -35,7 +38,7 @@ func searchMovies(query string) tea.Cmd {
 			return errMsg{err: errors.New("no movies found ;(")}
 		}
 
-		return searchMoviesMsg{movies: append(movies, yts.Option{Label: "previous"})}
+		return searchMoviesMsg{movies: append(movies, common.Option{Label: "previous"})}
 	}
 }
 
@@ -47,12 +50,24 @@ func searchVersions(link string) tea.Cmd {
 			return errMsg{err: err}
 		}
 
-		return searchVersionsMsg{versions: append(versions, yts.Option{Label: "previous"})}
+		return searchVersionsMsg{versions: append(versions, common.Option{Label: "previous"})}
 	}
 }
 
 func goToStep(step step) tea.Cmd {
 	return func() tea.Msg {
 		return goToStepMsg{step: step}
+	}
+}
+
+func downloadMovie(movie common.Option, movieTitle string) tea.Cmd {
+	return func() tea.Msg {
+		err := downloader.SaveFile(movie.Url, fmt.Sprintf("%s_%s", movieTitle, movie.Label))
+
+		if err != nil {
+			return errMsg{err: err}
+		}
+
+		return goToStepMsg{step: MOVIE_DOWNLOADED}
 	}
 }

@@ -5,7 +5,7 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/khaledAlorayir/yts-cli/cli"
+	"github.com/khaledAlorayir/yts-cli/services/cli"
 )
 
 func main() {
@@ -15,4 +15,5 @@ func main() {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
 	}
+
 }

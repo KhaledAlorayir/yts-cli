@@ -1,4 +1,4 @@
-package yts
+package common
 
 type Option struct {
 	Label string

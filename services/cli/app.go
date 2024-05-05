@@ -6,7 +6,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/khaledAlorayir/yts-cli/yts"
+	"github.com/khaledAlorayir/yts-cli/common"
 )
 
 type step int
@@ -15,12 +15,13 @@ const (
 	SEARCH_INPUT step = iota
 	MOVIE_LIST
 	VERSION_LIST
+	MOVIE_DOWNLOADED
 )
 
 type model struct {
 	textInput     textinput.Model
-	movies        []yts.Option
-	movieVersions []yts.Option
+	movies        []common.Option
+	movieVersions []common.Option
 	selectedIndex int
 	err           error
 	step          step
@@ -55,7 +56,7 @@ func (model model) View() string {
 
 	if model.step == MOVIE_LIST || model.step == VERSION_LIST {
 		var labels []string
-		var options []yts.Option
+		var options []common.Option
 
 		if model.step == MOVIE_LIST {
 			options = model.movies
@@ -81,6 +82,11 @@ func (model model) View() string {
 
 		ui += fmt.Sprintf("   Pick an option!\n\n%s", strings.Join(labels, "\n"))
 	}
+
+	if model.step == MOVIE_DOWNLOADED {
+		ui += "torrent has been saved to your downloads folder!"
+	}
+
 	return ui + fmt.Sprintf("\n\n%s\n\n", "(esc to quit)")
 }
 
@@ -92,7 +98,7 @@ func (model model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlC, tea.KeyEsc:
 			return model, tea.Quit
 		case tea.KeyEnter:
-			return model, model.handleStep()
+			return model, model.handleSelection()
 		case tea.KeyUp, tea.KeyDown:
 			return model.handleArrows(msg), nil
 		}
@@ -141,9 +147,10 @@ func (model model) handleArrows(msg tea.KeyMsg) model {
 	return model
 }
 
-func (model model) handleStep() tea.Cmd {
+func (model model) handleSelection() tea.Cmd {
 	switch model.step {
 	case SEARCH_INPUT:
+		//TODO input validation here
 		return searchMovies(model.textInput.Value())
 	case MOVIE_LIST:
 		if model.selectedIndex == len(model.movies)-1 {
@@ -154,7 +161,7 @@ func (model model) handleStep() tea.Cmd {
 		if model.selectedIndex == len(model.movieVersions)-1 {
 			return goToStep(MOVIE_LIST)
 		}
-		return nil
+		return downloadMovie(model.movieVersions[model.selectedIndex], "thing")
 	default:
 		return nil
 	}
