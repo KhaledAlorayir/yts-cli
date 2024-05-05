@@ -2,11 +2,9 @@ package cli
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/khaledAlorayir/yts-cli/common"
 )
 
 type step int
@@ -19,13 +17,11 @@ const (
 )
 
 type model struct {
-	textInput             textinput.Model
-	movies                []common.Option
-	movieVersions         []common.Option
-	selectedMovieIndex    int
-	selectedVersionsIndex int
-	err                   error
-	step                  step
+	textInput     textinput.Model
+	movies        cliList
+	movieVersions cliList
+	err           error
+	step          step
 }
 
 func InitialModel() model {
@@ -48,47 +44,14 @@ func (model model) View() string {
 
 	ui := ""
 
-	if model.step == SEARCH_INPUT {
-		ui += fmt.Sprintf(
-			"Please enter the movie name\n\n%s",
-			model.textInput.View(),
-		)
-	}
-
-	if model.step == MOVIE_LIST || model.step == VERSION_LIST {
-		var labels []string
-		var options []common.Option
-		var selectedIndex int
-
-		if model.step == MOVIE_LIST {
-			options = model.movies
-			selectedIndex = model.selectedMovieIndex
-
-		} else {
-			options = model.movieVersions
-			selectedIndex = model.selectedVersionsIndex
-		}
-
-		for i, o := range options {
-			var label string
-
-			if i == selectedIndex {
-				label = fmt.Sprintf("-> %s", o.Label)
-			} else {
-				label = fmt.Sprintf("   %s", o.Label)
-			}
-
-			if i == len(options)-1 {
-				label = "\n" + label
-			}
-
-			labels = append(labels, label)
-		}
-
-		ui += fmt.Sprintf("   Pick an option!\n\n%s", strings.Join(labels, "\n"))
-	}
-
-	if model.step == MOVIE_DOWNLOADED {
+	switch model.step {
+	case SEARCH_INPUT:
+		ui += fmt.Sprintf("Please enter the movie name\n\n%s", model.textInput.View())
+	case MOVIE_LIST:
+		ui += model.movies.view()
+	case VERSION_LIST:
+		ui += model.movieVersions.view()
+	case MOVIE_DOWNLOADED:
 		ui += "torrent has been saved to your downloads folder!"
 	}
 
@@ -105,14 +68,17 @@ func (model model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEnter:
 			return model, model.handleSelection()
 		case tea.KeyUp, tea.KeyDown:
-			return model.handleArrows(msg), nil
+			if model.step == MOVIE_LIST || model.step == VERSION_LIST {
+				return model.handleArrows(msg), nil
+			}
+			return model, nil
 		}
 	case searchMoviesMsg:
-		model.movies = msg.movies
+		model.movies = newCliList(msg.movies)
 		return model, goToStep(MOVIE_LIST)
 
 	case searchVersionsMsg:
-		model.movieVersions = msg.versions
+		model.movieVersions = newCliList(msg.versions)
 		return model, goToStep(VERSION_LIST)
 
 	case goToStepMsg:
@@ -129,31 +95,12 @@ func (model model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (model model) handleArrows(msg tea.KeyMsg) model {
-	var selectedIndex int
-	var optionsCount int
-
-	if model.step == MOVIE_LIST {
-		selectedIndex = model.selectedMovieIndex
-		optionsCount = len(model.movies)
-
-	} else {
-		selectedIndex = model.selectedVersionsIndex
-		optionsCount = len(model.movieVersions)
+	switch model.step {
+	case MOVIE_LIST:
+		model.movies.setSelection(msg)
+	case VERSION_LIST:
+		model.movieVersions.setSelection(msg)
 	}
-
-	switch msg.Type {
-	case tea.KeyUp:
-		selectedIndex--
-	case tea.KeyDown:
-		selectedIndex++
-	}
-
-	if model.step == MOVIE_LIST {
-		model.selectedMovieIndex = (selectedIndex + optionsCount) % optionsCount
-	} else {
-		model.selectedVersionsIndex = (selectedIndex + optionsCount) % optionsCount
-	}
-
 	return model
 }
 
@@ -163,15 +110,15 @@ func (model model) handleSelection() tea.Cmd {
 		//TODO input validation here
 		return searchMovies(model.textInput.Value())
 	case MOVIE_LIST:
-		if model.selectedMovieIndex == len(model.movies)-1 {
+		if model.movies.isPreviousOptionSelected() {
 			return goToStep(SEARCH_INPUT)
 		}
-		return searchVersions(model.movies[model.selectedMovieIndex].Url)
+		return searchVersions(model.movies.getSelected().Url)
 	case VERSION_LIST:
-		if model.selectedVersionsIndex == len(model.movieVersions)-1 {
+		if model.movieVersions.isPreviousOptionSelected() {
 			return goToStep(MOVIE_LIST)
 		}
-		return downloadMovie(model.movieVersions[model.selectedVersionsIndex], model.movies[model.selectedMovieIndex].Label)
+		return downloadMovie(model.movieVersions.getSelected(), model.movies.getSelected().Label)
 	default:
 		return nil
 	}

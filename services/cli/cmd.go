@@ -38,7 +38,7 @@ func searchMovies(query string) tea.Cmd {
 			return errMsg{err: errors.New("no movies found ;(")}
 		}
 
-		return searchMoviesMsg{movies: append(movies, common.Option{Label: "previous"})}
+		return searchMoviesMsg{movies: movies}
 	}
 }
 
@@ -50,7 +50,7 @@ func searchVersions(link string) tea.Cmd {
 			return errMsg{err: err}
 		}
 
-		return searchVersionsMsg{versions: append(versions, common.Option{Label: "previous"})}
+		return searchVersionsMsg{versions: versions}
 	}
 }
 
