@@ -19,12 +19,13 @@ const (
 )
 
 type model struct {
-	textInput     textinput.Model
-	movies        []common.Option
-	movieVersions []common.Option
-	selectedIndex int
-	err           error
-	step          step
+	textInput             textinput.Model
+	movies                []common.Option
+	movieVersions         []common.Option
+	selectedMovieIndex    int
+	selectedVersionsIndex int
+	err                   error
+	step                  step
 }
 
 func InitialModel() model {
@@ -57,17 +58,21 @@ func (model model) View() string {
 	if model.step == MOVIE_LIST || model.step == VERSION_LIST {
 		var labels []string
 		var options []common.Option
+		var selectedIndex int
 
 		if model.step == MOVIE_LIST {
 			options = model.movies
+			selectedIndex = model.selectedMovieIndex
+
 		} else {
 			options = model.movieVersions
+			selectedIndex = model.selectedVersionsIndex
 		}
 
 		for i, o := range options {
 			var label string
 
-			if i == model.selectedIndex {
+			if i == selectedIndex {
 				label = fmt.Sprintf("-> %s", o.Label)
 			} else {
 				label = fmt.Sprintf("   %s", o.Label)
@@ -103,19 +108,15 @@ func (model model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return model.handleArrows(msg), nil
 		}
 	case searchMoviesMsg:
-		model.step = MOVIE_LIST
 		model.movies = msg.movies
-		return model, nil
+		return model, goToStep(MOVIE_LIST)
 
 	case searchVersionsMsg:
-		model.step = VERSION_LIST
-		model.selectedIndex = 0
 		model.movieVersions = msg.versions
-		return model, nil
+		return model, goToStep(VERSION_LIST)
 
 	case goToStepMsg:
 		model.step = msg.step
-		model.selectedIndex = 0
 		return model, nil
 
 	case errMsg:
@@ -128,22 +129,31 @@ func (model model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (model model) handleArrows(msg tea.KeyMsg) model {
-	switch msg.Type {
-	case tea.KeyUp:
-		model.selectedIndex--
-	case tea.KeyDown:
-		model.selectedIndex++
-	}
-
-	optionsCount := 0
+	var selectedIndex int
+	var optionsCount int
 
 	if model.step == MOVIE_LIST {
+		selectedIndex = model.selectedMovieIndex
 		optionsCount = len(model.movies)
+
 	} else {
+		selectedIndex = model.selectedVersionsIndex
 		optionsCount = len(model.movieVersions)
 	}
 
-	model.selectedIndex = (model.selectedIndex + optionsCount) % optionsCount
+	switch msg.Type {
+	case tea.KeyUp:
+		selectedIndex--
+	case tea.KeyDown:
+		selectedIndex++
+	}
+
+	if model.step == MOVIE_LIST {
+		model.selectedMovieIndex = (selectedIndex + optionsCount) % optionsCount
+	} else {
+		model.selectedVersionsIndex = (selectedIndex + optionsCount) % optionsCount
+	}
+
 	return model
 }
 
@@ -153,15 +163,15 @@ func (model model) handleSelection() tea.Cmd {
 		//TODO input validation here
 		return searchMovies(model.textInput.Value())
 	case MOVIE_LIST:
-		if model.selectedIndex == len(model.movies)-1 {
+		if model.selectedMovieIndex == len(model.movies)-1 {
 			return goToStep(SEARCH_INPUT)
 		}
-		return searchVersions(model.movies[model.selectedIndex].Url)
+		return searchVersions(model.movies[model.selectedMovieIndex].Url)
 	case VERSION_LIST:
-		if model.selectedIndex == len(model.movieVersions)-1 {
+		if model.selectedVersionsIndex == len(model.movieVersions)-1 {
 			return goToStep(MOVIE_LIST)
 		}
-		return downloadMovie(model.movieVersions[model.selectedIndex], "thing")
+		return downloadMovie(model.movieVersions[model.selectedVersionsIndex], model.movies[model.selectedMovieIndex].Label)
 	default:
 		return nil
 	}
